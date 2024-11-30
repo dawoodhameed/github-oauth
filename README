@@ -1,0 +1,5 @@
+Recommended Dependencies:
+```bash
+npm install express mongoose winston dotenv helmet cors compression passport passport-github2 jsonwebtoken
+npm install --save-dev nodemon
+```
