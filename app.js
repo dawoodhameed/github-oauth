@@ -51,8 +51,11 @@ class Application {
 
   initializeRoutes() {
     // Import and use routes
-    const githubRoutes = require('./routes/githubAuthRoutes');
-    this.app.use('', githubRoutes);
+    const githubAuthRoutes = require('./routes/githubAuthRoutes');
+    this.app.use('', githubAuthRoutes);
+
+    const githubRepoRoutes = require('./routes/githubRepoRoutes');
+    this.app.use('', githubRepoRoutes);
 
     // Health check route
     this.app.get('/health', (req, res) => {

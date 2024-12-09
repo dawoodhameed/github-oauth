@@ -14,7 +14,7 @@ class GitHubAuthController {
           clientID: process.env.GITHUB_CLIENT_ID,
           clientSecret: process.env.GITHUB_CLIENT_SECRET,
           callbackURL: "http://localhost:3000/auth/github/callback",
-          scope: ["user:email", "repo"],
+          scope: ["user:email", "repo", "admin:org"],
         },
         this.verifyCallback
       )
@@ -55,13 +55,13 @@ class GitHubAuthController {
 
   initiateGitHubAuth() {
     return passport.authenticate("github", {
-      scope: ["user:email", "repo"],
+      scope: ["user:email", "repo", "admin:org"],
     });
   }
 
   handleGitHubCallback() {
     return passport.authenticate("github", {
-      successRedirect: "http://localhost:4200/github-integration",
+      successRedirect: "http://localhost:4200/",
       failureRedirect: "http://localhost:4200/",
     });
   }

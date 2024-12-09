@@ -8,9 +8,10 @@
   },
   "author": "Dawood Hameed",
   "license": "ISC",
-  "description": "",
+  "description": "Recommended Dependencies:\r ```bash\r npm install express mongoose winston dotenv helmet cors compression passport passport-github2 jsonwebtoken\r npm install --save-dev nodemon\r ```",
   "dependencies": {
     "@octokit/rest": "^21.0.2",
+    "axios": "^1.7.8",
     "body-parser": "^1.20.3",
     "compression": "^1.7.5",
     "cors": "^2.8.5",
@@ -26,5 +27,8 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.7"
+  },
+  "directories": {
+    "test": "test"
   }
 }
