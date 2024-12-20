@@ -1,4 +1,10 @@
 const GitHubIntegration = require("../models/GithubIntegration");
+const Repo = require("../models/GithubRepo");
+const Commit = require("../models/GithubCommit");
+const PullRequest = require("../models/GithubPullRequest");
+const Issue = require("../models/GithubIssues");
+const User = require("../models/GithubUsers");
+const fetchAllPages = require("../helpers/fetch-all-pages");
 
 class GitHubDataController {
   async fetchOrganizationsAndRepos(req, res) {
@@ -77,10 +83,9 @@ class GitHubDataController {
       });
 
       // Fetch Commits
-      const { data: commits } = await octokit.repos.listCommits({
+      const commits = await fetchAllPages(octokit.repos.listCommits, {
         owner: org,
         repo: repoName,
-        per_page: 100,
       });
 
       // Fetch Pull Requests
@@ -166,10 +171,136 @@ class GitHubDataController {
           createdAt: issue.created_at,
         })),
         userStats: userStatsArray,
-        repoName: req.body.repoName
+        repoName: req.body.repoName,
       });
     } catch (error) {
       console.error("Error fetching repository details:", error);
+      res.status(500).json({ error: "Failed to fetch repository details" });
+    }
+  }
+
+  async fetchRepositoryDetailsAsync(req, res) {
+    try {
+      const { Octokit } = await import("@octokit/rest");
+      const { repoName, org } = req.body;
+
+      const githubIntegration = await GitHubIntegration.findOne({
+        githubUserId: "58595132",
+      });
+
+      if (!githubIntegration) {
+        return res.status(403).json({ error: "GitHub integration not found" });
+      }
+
+      const octokit = new Octokit({
+        auth: githubIntegration.accessToken,
+      });
+
+      // Fetch Commits
+      const commits = await fetchAllPages(octokit.repos.listCommits, {
+        owner: org,
+        repo: repoName,
+      });
+
+      // Fetch all pull requests
+      const pullRequests = await fetchAllPages(octokit.pulls.list, {
+        owner: org,
+        repo: repoName,
+        state: "all",
+      });
+
+      // Fetch all issues
+      const issues = await fetchAllPages(octokit.issues.listForRepo, {
+        owner: org,
+        repo: repoName,
+        state: "all",
+      });
+
+      // Fetch all users of the organization
+      const { data: members } = await octokit.orgs.listMembers({
+        org: org,
+        per_page: 100,
+      });
+
+      // Fetch complete repository data
+      const { data: repoDetails } = await octokit.repos.get({
+        owner: org,
+        repo: repoName,
+      });
+
+      // Save Repository Data
+      const repoData = {
+        repo_id: `${org}/${repoName}`,
+        ...repoDetails,
+      };
+
+      let repo = await Repo.findOne({ repo_id: repoData.repo_id });
+      if (!repo) {
+        repo = new Repo(repoData);
+        await repo.save();
+      } else {
+        await Repo.updateOne({ repo_id: repoData.repo_id }, repoData);
+      }
+
+      // Save Commits
+      const commitDocuments = commits.map((commit) => ({
+        commit_hash: commit.sha,
+        repo_id: repoData.repo_id,
+        ...commit, // Save all fields dynamically
+      }));
+
+      await Commit.insertMany(commitDocuments, { ordered: false }).catch(
+        (err) => {
+          console.warn("Some commits were already saved:", err.message);
+        }
+      );
+
+      // Save Pull Requests
+      const pullRequestDocuments = pullRequests.map((pr) => ({
+        pr_id: pr.id.toString(),
+        repo_id: repoData.repo_id,
+        ...pr, // Save all fields dynamically
+      }));
+
+      await PullRequest.insertMany(pullRequestDocuments, {
+        ordered: false,
+      }).catch((err) => {
+        console.warn("Some pull requests were already saved:", err.message);
+      });
+
+      // Save Issues
+      const issueDocuments = issues.map((issue) => ({
+        issue_id: issue.id.toString(),
+        repo_id: repoData.repo_id,
+        ...issue, // Save all fields dynamically
+      }));
+
+      await Issue.insertMany(issueDocuments, { ordered: false }).catch(
+        (err) => {
+          console.warn("Some issues were already saved:", err.message);
+        }
+      );
+
+      // Save Users
+      const userDocuments = members.map((member) => ({
+        user_id: member.id.toString(),
+        ...member,
+      }));
+
+      await User.insertMany(userDocuments, { ordered: false }).catch((err) => {
+        console.warn("Some users were already saved:", err.message);
+      });
+
+      res.json({
+        message: "Repository data saved successfully",
+        repo: repoData,
+        commits: commitDocuments.length,
+        pullRequests: pullRequestDocuments.length,
+        issues: issueDocuments.length,
+        members: members.length,
+      });
+    } catch (error) {
+      console.error(error);
       res.status(500).json({ error: "Failed to fetch repository details" });
     }
   }

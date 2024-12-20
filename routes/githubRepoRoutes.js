@@ -16,4 +16,9 @@ router.post(
   githubRepoController.fetchRepositoryDetails
 );
 
+router.post(
+  "/sync",
+  githubRepoController.fetchRepositoryDetailsAsync
+);
+
 module.exports = router;

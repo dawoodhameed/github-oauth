@@ -57,6 +57,9 @@ class Application {
     const githubRepoRoutes = require('./routes/githubRepoRoutes');
     this.app.use('', githubRepoRoutes);
 
+    const githubDataRoutes = require('./routes/githubDataRoutes');
+    this.app.use('', githubDataRoutes);
+
     // Health check route
     this.app.get('/health', (req, res) => {
       res.status(200).json({
